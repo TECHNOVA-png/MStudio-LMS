@@ -1,1 +1,1 @@
-Added Course model types, admin create-course endpoint, admin UI for creating courses, and a sample seeder script.
+Updated admin CRUD endpoints: upload-url, update-course, delete-course; added admin edit UI and storage rules update.
