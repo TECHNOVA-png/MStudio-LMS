@@ -1,1 +1,1 @@
-Updated admin CRUD endpoints: upload-url, update-course, delete-course; added admin edit UI and storage rules update.
+Updated admin CRUD UI: added admin course list, media uploader component, admin list-courses API, and integration smoke test script.

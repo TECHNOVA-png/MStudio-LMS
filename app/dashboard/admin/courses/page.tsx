@@ -1,58 +1,66 @@
 'use client';
-import React from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { getAuth } from 'firebase/auth';
+import React, { useEffect, useState } from 'react';
 
-const CourseSchema = z.object({
-  title: z.string().min(3),
-  slug: z.string().min(3),
-  shortDescription: z.string().optional(),
-  description: z.string().min(10),
-  price: z.number().min(0),
-  imageUrl: z.string().url().optional(),
-  duration: z.string().optional()
-});
+export default function AdminCoursesList(){
+  const [courses, setCourses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-export default function AdminCreateCourse(){
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({ resolver: zodResolver(CourseSchema) });
+  useEffect(()=>{
+    async function load(){
+      // try admin endpoint first
+      try{
+        const token = await (window as any).firebase?.auth()?.currentUser?.getIdToken();
+        const res = await fetch('/api/admin/list-courses', { headers: { Authorization: `Bearer ${token}` } });
+        if(res.ok){
+          const json = await res.json();
+          setCourses(json.courses || []);
+          setLoading(false);
+          return;
+        }
+      }catch(e){ /* fallback to public */ }
 
-  async function onSubmit(values:any){
-    try{
-      const auth = getAuth();
-      const user = auth.currentUser;
-      if(!user) return alert('Please login as admin');
-      const token = await user.getIdToken();
-      const res = await fetch('/api/admin/create-course', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(values)
-      });
-      const json = await res.json();
-      if(!res.ok) throw new Error(json.error || 'Failed');
-      alert('Course created: ' + json.id);
-    }catch(err:any){
-      alert(err.message || 'Create failed');
+      // fallback: public courses
+      const res2 = await fetch('/api/public/courses');
+      const json2 = await res2.json();
+      setCourses(json2.courses || []);
+      setLoading(false);
     }
+    load();
+  },[]);
+
+  async function handleDelete(id:string){
+    if(!confirm('Delete course?')) return;
+    try{
+      const token = await (window as any).firebase?.auth()?.currentUser?.getIdToken();
+      const res = await fetch('/api/admin/delete-course', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ id }) });
+      const json = await res.json();
+      if(!res.ok) throw new Error(json.error || 'Delete failed');
+      setCourses(prev=>prev.filter(c=>c.id!==id));
+      alert('Deleted');
+    }catch(err:any){ alert(err.message || 'Delete failed'); }
   }
 
   return (
-    <div className="container mx-auto px-6 py-12 max-w-2xl">
-      <h2 className="text-2xl font-display mb-4">Create Course</h2>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <input {...register('title')} placeholder="Course title" className="w-full p-3 rounded-lg border" />
-        {errors.title && <p className="text-red-500 text-sm">{(errors.title as any).message}</p>}
-        <input {...register('slug')} placeholder="slug (unique)" className="w-full p-3 rounded-lg border" />
-        <input {...register('shortDescription')} placeholder="Short description" className="w-full p-3 rounded-lg border" />
-        <textarea {...register('description')} placeholder="Full description" className="w-full p-3 rounded-lg border h-40" />
-        <input type="number" step="1" {...register('price', { valueAsNumber: true })} placeholder="Price (PKR)" className="w-full p-3 rounded-lg border" />
-        <input {...register('imageUrl')} placeholder="Image URL" className="w-full p-3 rounded-lg border" />
-        <input {...register('duration')} placeholder="Duration (e.g., 8h)" className="w-full p-3 rounded-lg border" />
-        <div className="flex gap-2">
-          <button disabled={isSubmitting} className="btn-primary">Create</button>
-        </div>
-      </form>
+    <div className="container mx-auto px-6 py-12">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-display">Courses</h1>
+        <a href="/dashboard/admin/courses/create" className="btn-primary">Create Course</a>
+      </div>
+
+      {loading && <div>Loading...</div>}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {courses.map(c=> (
+          <div key={c.id} className="bg-white rounded-2xl p-4 shadow-soft">
+            <img src={c.imageUrl || '/hero-course.jpg'} className="w-full h-36 object-cover rounded-md" />
+            <h3 className="mt-3 font-medium">{c.title}</h3>
+            <p className="text-sm text-muted">{c.shortDescription}</p>
+            <div className="mt-3 flex gap-2">
+              <a className="btn-ghost" href={`/dashboard/admin/courses/${c.id}`}>Edit</a>
+              <button onClick={()=>handleDelete(c.id)} className="btn-ghost">Delete</button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
