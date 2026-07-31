@@ -23,6 +23,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /user_progress/{userId}/courses/{courseId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // writes to user_progress are handled by admin SDK endpoints; prevent client-side writes for safety
+      allow write: if false;
+    }
+
     match /{document=**} {
       allow read: if true;
       allow write: if false;
