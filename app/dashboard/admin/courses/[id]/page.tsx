@@ -4,6 +4,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import MediaUploader from '../../../../components/MediaUploader';
 
 const CourseSchema = z.object({
   title: z.string().min(3),
@@ -19,7 +20,7 @@ export default function AdminEditCourse(){
   const params = useParams();
   const router = useRouter();
   const { id } = params as { id: string };
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({ resolver: zodResolver(CourseSchema) });
+  const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm({ resolver: zodResolver(CourseSchema) });
   const [loading, setLoading] = useState(true);
 
   useEffect(()=>{
@@ -46,6 +47,11 @@ export default function AdminEditCourse(){
     }catch(err:any){ alert(err.message || 'Update failed'); }
   }
 
+  function handleUploaded(url:string){
+    setValue('imageUrl', url);
+    alert('Image URL set in the form');
+  }
+
   if(loading) return <div className="container mx-auto px-6 py-12">Loading...</div>;
 
   return (
@@ -59,10 +65,13 @@ export default function AdminEditCourse(){
         <textarea {...register('description')} placeholder="Full description" className="w-full p-3 rounded-lg border h-40" />
         <input type="number" step="1" {...register('price', { valueAsNumber: true })} placeholder="Price (PKR)" className="w-full p-3 rounded-lg border" />
         <input {...register('imageUrl')} placeholder="Image URL" className="w-full p-3 rounded-lg border" />
+        <div className="mt-2">
+          <div className="text-sm text-muted mb-2">Or upload an image/video/pdf for the course (admin only)</div>
+          <MediaUploader courseId={id} onUploaded={handleUploaded} />
+        </div>
         <input {...register('duration')} placeholder="Duration (e.g., 8h)" className="w-full p-3 rounded-lg border" />
         <div className="flex gap-2">
           <button disabled={isSubmitting} className="btn-primary">Save</button>
-          <button type="button" onClick={()=>router.push('/dashboard/admin/courses')} className="btn-ghost">Cancel</button>
         </div>
       </form>
     </div>
